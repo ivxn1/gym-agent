@@ -175,3 +175,100 @@ def get_workout_plan(weekday: int, difficulty: str) -> WorkoutPlan | None:
         return None
     plans = WORKOUT_LIBRARY.get(workout_key, {})
     return plans.get(difficulty) or plans.get("beginner")
+
+
+# ─────────────────────────────────────────────────────────────────────────
+# Quick on-demand workouts — chosen from the menu, equipment-focused.
+# Not tied to a specific weekday.
+# ─────────────────────────────────────────────────────────────────────────
+
+QUICK_WORKOUTS: dict[str, WorkoutPlan] = {
+    "running": WorkoutPlan(
+        day_type="Бягане на пътека",
+        exercises=[
+            Exercise(name="Загрявка — Ходене", duration="3 мин", rest="—", xp=XP_EASY, youtube_query="treadmill warm up walk"),
+            Exercise(name="Леко бягане", duration="5 мин", rest="—", xp=XP_MEDIUM, youtube_query="easy jog treadmill"),
+            Exercise(name="Интервал — Бързо бягане", sets=5, reps="1 мин бързо + 1 мин ходене", rest="—", xp=XP_HARD, youtube_query="treadmill HIIT intervals"),
+            Exercise(name="Cool-down — Ходене", duration="3 мин", rest="—", xp=XP_EASY, youtube_query="treadmill cool down walk"),
+        ],
+        estimated_duration="25 мин",
+        estimated_calories=280,
+        difficulty="intermediate",
+    ),
+    "jump_rope": WorkoutPlan(
+        day_type="Въже за скачане — Интервали",
+        exercises=[
+            Exercise(name="Загрявка — Леки скокове", duration="60 сек", rest="30 сек", xp=XP_EASY, youtube_query="jump rope warm up"),
+            Exercise(name="Двукраки скокове", sets=3, reps="60 сек", rest="30 сек", xp=XP_MEDIUM, youtube_query="jump rope basic"),
+            Exercise(name="High Knee скокове", sets=3, reps="30 сек", rest="30 сек", xp=XP_MEDIUM, youtube_query="jump rope high knees"),
+            Exercise(name="Boxer Skip (последователно)", sets=3, reps="45 сек", rest="20 сек", xp=XP_MEDIUM, youtube_query="boxer skip jump rope"),
+            Exercise(name="Финал — Темп", duration="60 сек", rest="—", xp=XP_HARD, youtube_query="fast jump rope"),
+        ],
+        estimated_duration="15 мин",
+        estimated_calories=180,
+        difficulty="intermediate",
+    ),
+    "core": WorkoutPlan(
+        day_type="Core тренировка",
+        exercises=[
+            Exercise(name="Plank", duration="45 сек", rest="20 сек", xp=XP_EASY, youtube_query="plank"),
+            Exercise(name="Crunches", sets=3, reps="15", rest="25 сек", xp=XP_EASY, youtube_query="crunches"),
+            Exercise(name="Russian Twist", sets=3, reps="20", rest="25 сек", xp=XP_MEDIUM, youtube_query="russian twist"),
+            Exercise(name="Leg Raise", sets=3, reps="12", rest="25 сек", xp=XP_MEDIUM, youtube_query="leg raise"),
+            Exercise(name="Dead Bug", sets=3, reps="10", rest="25 сек", xp=XP_MEDIUM, youtube_query="dead bug"),
+            Exercise(name="Bird Dog", sets=3, reps="10 на страна", rest="20 сек", xp=XP_EASY, youtube_query="bird dog"),
+            Exercise(name="Side Plank", duration="30 сек на страна", rest="20 сек", xp=XP_MEDIUM, youtube_query="side plank"),
+        ],
+        estimated_duration="18 мин",
+        estimated_calories=140,
+        difficulty="intermediate",
+    ),
+    "stretching": WorkoutPlan(
+        day_type="Стречинг + Мобилност",
+        exercises=[
+            Exercise(name="World's Greatest Stretch", sets=2, reps="6 на страна", rest="—", xp=XP_EASY, youtube_query="world's greatest stretch"),
+            Exercise(name="Hip Circles", sets=2, reps="10 на посока", rest="—", xp=XP_EASY, youtube_query="hip circles"),
+            Exercise(name="Cat-Cow Stretch", sets=2, reps="10", rest="—", xp=XP_EASY, youtube_query="cat cow stretch"),
+            Exercise(name="Pigeon Pose", duration="60 сек на страна", rest="—", xp=XP_EASY, youtube_query="pigeon pose stretch"),
+            Exercise(name="Child's Pose", duration="90 сек", rest="—", xp=XP_EASY, youtube_query="child's pose stretch"),
+            Exercise(name="Thoracic Rotation", sets=2, reps="10 на страна", rest="—", xp=XP_EASY, youtube_query="thoracic rotation"),
+            Exercise(name="Foam Rolling (Цяло тяло)", duration="5 мин", rest="—", xp=XP_EASY, youtube_query="foam rolling"),
+        ],
+        estimated_duration="20 мин",
+        estimated_calories=100,
+        difficulty="beginner",
+    ),
+    "strength_bands": WorkoutPlan(
+        day_type="Сила с ластици",
+        exercises=[
+            Exercise(name="Squat", sets=4, reps="12", rest="40 сек", xp=XP_MEDIUM, youtube_query="squat"),
+            Exercise(name="Push Up", sets=4, reps="10", rest="40 сек", xp=XP_MEDIUM, youtube_query="push up"),
+            Exercise(name="Resistance Band Row", sets=4, reps="12", rest="40 сек", xp=XP_MEDIUM, youtube_query="resistance band row"),
+            Exercise(name="Resistance Band Overhead Press", sets=3, reps="12", rest="35 сек", xp=XP_MEDIUM, youtube_query="resistance band press"),
+            Exercise(name="Hip Thrust", sets=3, reps="15", rest="30 сек", xp=XP_MEDIUM, youtube_query="hip thrust"),
+            Exercise(name="Resistance Band Bicep Curl", sets=3, reps="15", rest="25 сек", xp=XP_EASY, youtube_query="resistance band curl"),
+            Exercise(name="Lunge", sets=3, reps="10 на крак", rest="35 сек", xp=XP_MEDIUM, youtube_query="lunge"),
+        ],
+        estimated_duration="35 мин",
+        estimated_calories=280,
+        difficulty="intermediate",
+    ),
+    "hiit": WorkoutPlan(
+        day_type="HIIT кардио",
+        exercises=[
+            Exercise(name="Jumping Jacks", duration="45 сек", rest="15 сек", xp=XP_EASY, youtube_query="jumping jacks"),
+            Exercise(name="Burpees", sets=4, reps="8", rest="30 сек", xp=XP_HARD, youtube_query="burpees"),
+            Exercise(name="High Knees", duration="45 сек", rest="15 сек", xp=XP_MEDIUM, youtube_query="high knees"),
+            Exercise(name="Mountain Climbers", duration="45 сек", rest="15 сек", xp=XP_MEDIUM, youtube_query="mountain climbers"),
+            Exercise(name="Jump Squat", sets=3, reps="12", rest="25 сек", xp=XP_HARD, youtube_query="jump squat"),
+            Exercise(name="Plank to Push-Up", sets=3, reps="8", rest="25 сек", xp=XP_MEDIUM, youtube_query="plank to push up"),
+        ],
+        estimated_duration="22 мин",
+        estimated_calories=260,
+        difficulty="intermediate",
+    ),
+}
+
+
+def get_quick_workout(key: str) -> WorkoutPlan | None:
+    return QUICK_WORKOUTS.get(key)

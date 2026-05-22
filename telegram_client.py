@@ -3,8 +3,9 @@ import logging
 import httpx
 from datetime import date, timedelta
 
-from workouts import get_workout_plan
+from workouts import get_workout_plan, get_quick_workout
 from youtube import search_youtube
+from models import WorkoutPlan
 import database as db
 
 logger = logging.getLogger(__name__)
@@ -84,59 +85,78 @@ async def set_bot_commands():
 
 
 async def send_workout_menu(chat_id: int):
-    """Send the workout selection menu."""
+    """Send the workout selection menu — action-oriented: choose what to do right now."""
     keyboard = [
-        [{"text": "Днешната тренировка", "callback_data": "menu|today"}],
+        [{"text": "Днешната планирана тренировка", "callback_data": "menu|today"}],
         [
-            {"text": "Пон — HIIT", "callback_data": "menu|day|0"},
-            {"text": "Вт — Сила", "callback_data": "menu|day|1"},
-            {"text": "Ср — Лека", "callback_data": "menu|day|2"},
+            {"text": "Бягане — пътека", "callback_data": "menu|quick|running"},
+            {"text": "Въже за скачане", "callback_data": "menu|quick|jump_rope"},
         ],
         [
-            {"text": "Чет — HIIT", "callback_data": "menu|day|3"},
-            {"text": "Пет — Сила", "callback_data": "menu|day|4"},
-            {"text": "Съб — Лека", "callback_data": "menu|day|5"},
+            {"text": "Сила с ластици", "callback_data": "menu|quick|strength_bands"},
+            {"text": "HIIT кардио", "callback_data": "menu|quick|hiit"},
         ],
         [
-            {"text": "По-лесно", "callback_data": "menu|diff|easier"},
-            {"text": "По-трудно", "callback_data": "menu|diff|harder"},
+            {"text": "Само Core", "callback_data": "menu|quick|core"},
+            {"text": "Стречинг / Мобилност", "callback_data": "menu|quick|stretching"},
+        ],
+        [
+            {"text": "Виж друг ден", "callback_data": "menu|days"},
+            {"text": "Промени трудност", "callback_data": "menu|diff_menu"},
         ],
     ]
     await send_message(
         chat_id,
-        "<b>Избери тренировка:</b>",
+        "<b>Какво ще тренираш сега?</b>\nИзбери според оборудването и времето, с което разполагаш.",
         reply_markup={"inline_keyboard": keyboard},
     )
 
 
-async def send_workout_for_day(telegram_id: int, weekday: int, mark_as_sent: bool = False) -> None:
-    """Build and send workout for a given weekday with inline checklist buttons."""
+async def send_day_picker(chat_id: int):
+    """Submenu — pick a specific day of the week."""
+    keyboard = [
+        [
+            {"text": "Пон — HIIT", "callback_data": "menu|day|0"},
+            {"text": "Вт — Сила", "callback_data": "menu|day|1"},
+        ],
+        [
+            {"text": "Ср — Лека", "callback_data": "menu|day|2"},
+            {"text": "Чет — HIIT", "callback_data": "menu|day|3"},
+        ],
+        [
+            {"text": "Пет — Сила", "callback_data": "menu|day|4"},
+            {"text": "Съб — Лека", "callback_data": "menu|day|5"},
+        ],
+        [{"text": "← Назад към менюто", "callback_data": "menu|back"}],
+    ]
+    await send_message(chat_id, "<b>Избери ден:</b>", reply_markup={"inline_keyboard": keyboard})
+
+
+async def send_difficulty_menu(chat_id: int):
+    """Submenu — change difficulty."""
+    keyboard = [
+        [
+            {"text": "По-лесно", "callback_data": "menu|diff|easier"},
+            {"text": "По-трудно", "callback_data": "menu|diff|harder"},
+        ],
+        [{"text": "← Назад към менюто", "callback_data": "menu|back"}],
+    ]
+    await send_message(chat_id, "<b>Промени трудност:</b>", reply_markup={"inline_keyboard": keyboard})
+
+
+async def _render_workout(telegram_id: int, plan: WorkoutPlan, header: str, mark_as_sent: bool = False) -> None:
+    """Shared renderer — builds the workout message with inline checklist."""
     user = db.get_user(telegram_id)
     if not user:
         return
-
-    if weekday == 6:
-        await send_message(
-            telegram_id,
-            f"<b>Неделя — Почивен ден.</b>\n\nОтпочини се. Утре започваме нова седмица.\n\n"
-            f"Streak: <b>{user['streak']} дни</b> | Level: <b>{user['level']}</b>",
-        )
-        return
-
-    difficulty = user.get("difficulty", "beginner")
-    plan = get_workout_plan(weekday, difficulty)
-    if not plan:
-        return
-
-    day_name = DAYS_BG[weekday]
 
     yt_links = {}
     for ex in plan.exercises:
         yt_links[ex.name] = await search_youtube(ex.youtube_query or ex.name)
 
     lines = [
-        f"<b>Тренировка {day_name}</b> — {plan.day_type}",
-        f"{plan.estimated_duration} | ~{plan.estimated_calories} ккал | {difficulty.capitalize()}",
+        header,
+        f"{plan.estimated_duration} | ~{plan.estimated_calories} ккал | {plan.difficulty.capitalize()}",
         "",
         "Отбележи след всяко упражнение:",
         "",
@@ -166,8 +186,41 @@ async def send_workout_for_day(telegram_id: int, weekday: int, mark_as_sent: boo
         db.update_user_state(user["id"], workout_sent_today=True, last_workout_message_id=result.get("message_id"))
 
 
+async def send_workout_for_day(telegram_id: int, weekday: int, mark_as_sent: bool = False) -> None:
+    """Send the scheduled workout for a given weekday."""
+    user = db.get_user(telegram_id)
+    if not user:
+        return
+
+    if weekday == 6:
+        await send_message(
+            telegram_id,
+            f"<b>Неделя — Почивен ден.</b>\n\nОтпочини се. Утре започваме нова седмица.\n\n"
+            f"Streak: <b>{user['streak']} дни</b> | Level: <b>{user['level']}</b>",
+        )
+        return
+
+    difficulty = user.get("difficulty", "beginner")
+    plan = get_workout_plan(weekday, difficulty)
+    if not plan:
+        return
+
+    day_name = DAYS_BG[weekday]
+    header = f"<b>Тренировка {day_name}</b> — {plan.day_type}"
+    await _render_workout(telegram_id, plan, header, mark_as_sent=mark_as_sent)
+
+
+async def send_quick_workout(telegram_id: int, quick_type: str) -> None:
+    """Send an on-demand workout chosen from the menu."""
+    plan = get_quick_workout(quick_type)
+    if not plan:
+        return
+    header = f"<b>{plan.day_type}</b>"
+    await _render_workout(telegram_id, plan, header, mark_as_sent=False)
+
+
 async def send_daily_workout(telegram_id: int):
-    """Send today's workout and mark it as sent."""
+    """Send today's scheduled workout and mark it as sent."""
     today = date.today()
     await send_workout_for_day(telegram_id, today.weekday(), mark_as_sent=True)
 
@@ -197,6 +250,23 @@ async def handle_menu_callback(callback_query: dict) -> None:
     if action == "today":
         await answer_callback_query(cq_id)
         await send_daily_workout(telegram_id)
+
+    elif action == "quick" and len(parts) > 2:
+        quick_type = parts[2]
+        await answer_callback_query(cq_id)
+        await send_quick_workout(telegram_id, quick_type)
+
+    elif action == "days":
+        await answer_callback_query(cq_id)
+        await send_day_picker(chat_id)
+
+    elif action == "diff_menu":
+        await answer_callback_query(cq_id)
+        await send_difficulty_menu(chat_id)
+
+    elif action == "back":
+        await answer_callback_query(cq_id)
+        await send_workout_menu(chat_id)
 
     elif action == "day" and len(parts) > 2:
         weekday = int(parts[2])

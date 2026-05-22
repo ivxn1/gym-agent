@@ -106,16 +106,15 @@ async def handle_update(update: dict):
         db.upsert_user(telegram_id, first_name)
         await tg.send_message(
             chat_id,
-            f"👋 Здравей, <b>{first_name}</b>!\n\n"
-            "Аз съм твоят личен фитнес агент. Всяка сутрин в <b>08:00</b> ще ти изпращам "
-            "тренировката за деня с интерактивен checklist.\n\n"
-            "📅 Програма:\n"
-            "• Пон/Чет — Кардио HIIT + Core\n"
-            "• Вт/Пет — Сила с ластици\n"
-            "• Ср/Съб — Лека активност\n"
-            "• Нед — Почивка\n\n"
-            "Можеш да ми пишеш всяко време — ще ти помогна!\n\n"
-            "⭐ <b>Level 1</b> | 🔥 Streak: 0 | XP: 0"
+            f"Здравей, <b>{first_name}</b>.\n\n"
+            "Всяка сутрин в <b>08:00</b> ще получаваш тренировката за деня с checklist.\n\n"
+            "<b>Програма:</b>\n"
+            "Пон/Чет — Кардио HIIT + Core\n"
+            "Вт/Пет — Сила с ластици\n"
+            "Ср/Съб — Лека активност\n"
+            "Нед — Почивка\n\n"
+            "Команди: /workout /menu /stats\n"
+            "Или ми пиши свободно на български.",
         )
         return
 
@@ -125,17 +124,22 @@ async def handle_update(update: dict):
         if user:
             await tg.send_message(
                 chat_id,
-                f"📊 <b>Твоята статистика</b>\n\n"
-                f"⭐ Level: <b>{user['level']}</b>\n"
-                f"✨ XP: <b>{user['xp']}</b>\n"
-                f"🔥 Streak: <b>{user['streak']} дни</b>\n"
-                f"📈 Трудност: <b>{user.get('difficulty', 'beginner').capitalize()}</b>",
+                f"<b>Статистика</b>\n\n"
+                f"Level: <b>{user['level']}</b>\n"
+                f"XP: <b>{user['xp']}</b>\n"
+                f"Streak: <b>{user['streak']} дни</b>\n"
+                f"Трудност: <b>{user.get('difficulty', 'beginner').capitalize()}</b>",
             )
         return
 
     # ── /workout ───────────────────────────────────────────────────────────
     if text == "/workout":
         await tg.send_daily_workout(telegram_id)
+        return
+
+    # ── /menu ──────────────────────────────────────────────────────────────
+    if text == "/menu":
+        await tg.send_workout_menu(chat_id)
         return
 
     # ── Free-text chat → Claude agent ─────────────────────────────────────

@@ -36,6 +36,10 @@ async def lifespan(app: FastAPI):
         result = await tg.set_webhook(webhook_url)
         logger.info("Webhook set: %s", result)
 
+    # Register slash commands in Telegram UI
+    cmd_result = await tg.set_bot_commands()
+    logger.info("Bot commands set: %s", cmd_result)
+
     # Start scheduler
     scheduler = create_scheduler()
     scheduler.start()
@@ -139,6 +143,16 @@ async def handle_update(update: dict):
 
     # ── /menu ──────────────────────────────────────────────────────────────
     if text == "/menu":
+        await tg.send_workout_menu(chat_id)
+        return
+
+    # ── Intercept menu-like requests (don't waste a Claude call) ──────────
+    lower = text.lower().strip(" ?!.")
+    menu_triggers = {
+        "меню", "menu", "опции", "options", "какво можеш", "помощ", "help",
+        "/help", "commands", "команди",
+    }
+    if lower in menu_triggers:
         await tg.send_workout_menu(chat_id)
         return
 

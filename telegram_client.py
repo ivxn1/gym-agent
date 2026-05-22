@@ -66,6 +66,23 @@ async def set_webhook(webhook_url: str):
         return r.json()
 
 
+async def set_bot_commands():
+    """Register slash commands in Telegram UI (visible via the / button)."""
+    commands = [
+        {"command": "workout", "description": "Днешната тренировка"},
+        {"command": "menu", "description": "Меню с тренировки и трудност"},
+        {"command": "stats", "description": "Моята статистика"},
+        {"command": "start", "description": "Начало"},
+    ]
+    try:
+        async with httpx.AsyncClient(timeout=10) as c:
+            r = await c.post(f"{BASE_URL}/setMyCommands", json={"commands": commands})
+            return r.json()
+    except Exception as e:
+        logger.warning("setMyCommands error: %s", e)
+        return None
+
+
 async def send_workout_menu(chat_id: int):
     """Send the workout selection menu."""
     keyboard = [

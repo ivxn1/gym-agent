@@ -1,6 +1,7 @@
 import os
 import logging
 import sentry_sdk
+from sentry_sdk.integrations.logging import LoggingIntegration
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import JSONResponse
@@ -18,9 +19,24 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # ── Sentry ─────────────────────────────────────────────────────────────────
+# DSN comes from the SENTRY_DSN fly secret. Fly injects FLY_* env vars
+# automatically, which we use to tag environment and release.
 sentry_dsn = os.environ.get("SENTRY_DSN")
 if sentry_dsn:
-    sentry_sdk.init(dsn=sentry_dsn, traces_sample_rate=0.1)
+    sentry_sdk.init(
+        dsn=sentry_dsn,
+        environment=os.environ.get("SENTRY_ENVIRONMENT", os.environ.get("FLY_APP_NAME", "production")),
+        release=os.environ.get("FLY_MACHINE_VERSION") or os.environ.get("FLY_IMAGE_REF"),
+        traces_sample_rate=float(os.environ.get("SENTRY_TRACES_SAMPLE_RATE", "0.1")),
+        profiles_sample_rate=float(os.environ.get("SENTRY_PROFILES_SAMPLE_RATE", "0.1")),
+        send_default_pii=False,
+        # Capture logger.error()/logger.exception() as Sentry events,
+        # and INFO+ as breadcrumbs for context leading up to an error.
+        integrations=[LoggingIntegration(level=logging.INFO, event_level=logging.ERROR)],
+    )
+    logger.info("Sentry initialised (env=%s)", os.environ.get("FLY_APP_NAME", "production"))
+else:
+    logger.warning("SENTRY_DSN not set — error tracking disabled")
 
 # ── Telegram secret token for webhook security ─────────────────────────────
 WEBHOOK_SECRET = os.environ.get("TELEGRAM_WEBHOOK_SECRET", "")
@@ -63,7 +79,13 @@ app = FastAPI(title="Gym Agent", lifespan=lifespan)
 # ── Health check ───────────────────────────────────────────────────────────
 @app.get("/health")
 async def health():
-    return {"status": "ok"}
+    return {"status": "ok", "sentry": bool(sentry_dsn)}
+
+
+# ── Sentry verification — triggers a test error, then check your dashboard ──
+@app.get("/debug/sentry")
+async def debug_sentry():
+    raise RuntimeError("Sentry test error — integration is working")
 
 
 # ── Telegram webhook ───────────────────────────────────────────────────────
@@ -82,10 +104,9 @@ async def webhook(request: Request):
 
     try:
         await handle_update(update)
-    except Exception as e:
-        logger.exception("Unhandled error in webhook: %s", e)
-        if sentry_dsn:
-            sentry_sdk.capture_exception(e)
+    except Exception:
+        # LoggingIntegration forwards this to Sentry as an event.
+        logger.exception("Unhandled error in webhook")
 
     # Always return 200 to Telegram
     return JSONResponse({"ok": True})

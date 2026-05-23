@@ -1,4 +1,5 @@
 import os
+import html
 import logging
 import httpx
 from datetime import date, timedelta
@@ -14,6 +15,16 @@ BOT_TOKEN = os.environ["TELEGRAM_BOT_TOKEN"]
 BASE_URL = f"https://api.telegram.org/bot{BOT_TOKEN}"
 
 DAYS_BG = ["Понеделник", "Вторник", "Сряда", "Четвъртък", "Петък", "Събота", "Неделя"]
+
+# Persistent button keyboard shown under the text input at all times.
+PERSISTENT_KEYBOARD = {
+    "keyboard": [
+        [{"text": "Днешна тренировка"}, {"text": "Меню"}],
+        [{"text": "Статистика"}],
+    ],
+    "resize_keyboard": True,
+    "is_persistent": True,
+}
 DAY_TYPES = {
     0: "HIIT + Core",
     1: "Сила",
@@ -168,8 +179,9 @@ async def _render_workout(telegram_id: int, plan: WorkoutPlan, header: str, mark
             detail = ex.duration
         else:
             detail = ""
-        yt = yt_links.get(ex.name, "")
-        lines.append(f"{i}. <b>{ex.name}</b> — {detail}  <a href='{yt}'>видео</a>  (+{ex.xp} XP)")
+        yt = html.escape(yt_links.get(ex.name, ""), quote=True)
+        name = html.escape(ex.name)
+        lines.append(f'{i}. <b>{name}</b> — {detail}  <a href="{yt}">видео</a>  (+{ex.xp} XP)')
 
     lines += [
         "",

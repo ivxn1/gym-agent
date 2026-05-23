@@ -5,7 +5,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import JSONResponse
 
-from scheduler import create_scheduler
+from scheduler import create_scheduler, catch_up_on_startup
 import database as db
 import telegram_client as tg
 import agent as ai
@@ -43,7 +43,13 @@ async def lifespan(app: FastAPI):
     # Start scheduler
     scheduler = create_scheduler()
     scheduler.start()
-    logger.info("Scheduler started")
+    logger.info("Scheduler started with jobs: %s", [j.id for j in scheduler.get_jobs()])
+
+    # Send today's workout if we started up after 08:00 and missed the cron
+    try:
+        await catch_up_on_startup()
+    except Exception as e:
+        logger.error("Startup catch-up failed: %s", e)
 
     yield
 
@@ -105,6 +111,8 @@ async def handle_update(update: dict):
     if not telegram_id or not text:
         return
 
+    lower = text.lower().strip(" ?!.")
+
     # ── /start ─────────────────────────────────────────────────────────────
     if text == "/start":
         db.upsert_user(telegram_id, first_name)
@@ -117,13 +125,13 @@ async def handle_update(update: dict):
             "Вт/Пет — Сила с ластици\n"
             "Ср/Съб — Лека активност\n"
             "Нед — Почивка\n\n"
-            "Команди: /workout /menu /stats\n"
-            "Или ми пиши свободно на български.",
+            "Използвай бутоните долу или ми пиши свободно на български.",
+            reply_markup=tg.PERSISTENT_KEYBOARD,
         )
         return
 
-    # ── /stats ─────────────────────────────────────────────────────────────
-    if text == "/stats":
+    # ── /stats or "Статистика" button ──────────────────────────────────────
+    if text == "/stats" or lower == "статистика":
         user = db.get_user(telegram_id)
         if user:
             await tg.send_message(
@@ -136,23 +144,17 @@ async def handle_update(update: dict):
             )
         return
 
-    # ── /workout ───────────────────────────────────────────────────────────
-    if text == "/workout":
+    # ── /workout or "Днешна тренировка" button ─────────────────────────────
+    if text == "/workout" or lower in {"днешна тренировка", "тренировка"}:
         await tg.send_daily_workout(telegram_id)
         return
 
-    # ── /menu ──────────────────────────────────────────────────────────────
-    if text == "/menu":
-        await tg.send_workout_menu(chat_id)
-        return
-
-    # ── Intercept menu-like requests (don't waste a Claude call) ──────────
-    lower = text.lower().strip(" ?!.")
+    # ── /menu, "Меню" button, or menu-like requests ───────────────────────
     menu_triggers = {
-        "меню", "menu", "опции", "options", "какво можеш", "помощ", "help",
-        "/help", "commands", "команди",
+        "/menu", "меню", "menu", "опции", "options", "какво можеш", "помощ",
+        "help", "/help", "commands", "команди",
     }
-    if lower in menu_triggers:
+    if text == "/menu" or lower in menu_triggers:
         await tg.send_workout_menu(chat_id)
         return
 

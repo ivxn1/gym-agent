@@ -1,7 +1,7 @@
 import os
 import logging
 import httpx
-from functools import lru_cache
+from urllib.parse import quote_plus
 
 logger = logging.getLogger(__name__)
 
@@ -70,5 +70,5 @@ async def search_youtube(exercise_name: str) -> str:
 
 
 def _build_search_url(exercise_name: str) -> str:
-    query = exercise_name.replace(" ", "+") + "+exercise+tutorial"
+    query = quote_plus(f"{exercise_name} exercise tutorial")
     return f"https://www.youtube.com/results?search_query={query}"

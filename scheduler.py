@@ -1,6 +1,6 @@
 import logging
 import asyncio
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 import pytz
@@ -14,6 +14,12 @@ logger = logging.getLogger(__name__)
 TIMEZONE = pytz.timezone("Europe/Sofia")
 
 
+async def job_reset_daily_state():
+    """00:05 Sofia — clear per-day flags so the morning send works cleanly."""
+    logger.info("Running job: reset_daily_state")
+    db.reset_daily_state()
+
+
 async def job_send_daily_workouts():
     """08:00 Sofia — send workout to all users."""
     logger.info("Running job: send_daily_workouts")
@@ -25,6 +31,27 @@ async def job_send_daily_workouts():
             await asyncio.sleep(0.1)  # gentle rate-limit
         except Exception as e:
             logger.error("Error sending workout to %s: %s", user["telegram_id"], e)
+
+
+async def catch_up_on_startup():
+    """If the app starts after 08:00 (deploy/restart) and today's workout
+    wasn't sent yet, send it now. Avoids missing a day due to downtime."""
+    now = datetime.now(TIMEZONE)
+    if now.weekday() == 6:  # Sunday rest
+        return
+    if now.hour < 8 or now.hour >= 22:
+        return
+    logger.info("Running startup catch-up check")
+    users = db.get_all_active_users()
+    for user in users:
+        try:
+            state = db.get_user_state(user["id"])
+            if not state.get("workout_sent_today"):
+                logger.info("Catch-up: sending today's workout to %s", user["telegram_id"])
+                await tg.send_daily_workout(user["telegram_id"])
+                await asyncio.sleep(0.1)
+        except Exception as e:
+            logger.error("Catch-up error for %s: %s", user["telegram_id"], e)
 
 
 async def job_send_reminders():
@@ -82,6 +109,15 @@ async def job_auto_adapt_difficulty():
 
 def create_scheduler() -> AsyncIOScheduler:
     scheduler = AsyncIOScheduler(timezone=TIMEZONE)
+
+    # Midnight reset — 00:05 Sofia
+    scheduler.add_job(
+        job_reset_daily_state,
+        CronTrigger(hour=0, minute=5, timezone=TIMEZONE),
+        id="reset_daily_state",
+        replace_existing=True,
+        misfire_grace_time=3600,
+    )
 
     # Daily workout — 08:00 Sofia
     scheduler.add_job(

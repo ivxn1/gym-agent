@@ -7,8 +7,8 @@ XP_MEDIUM = 12
 XP_HARD = 18
 
 WORKOUT_LIBRARY: dict[str, dict[str, WorkoutPlan]] = {
-    # ── Monday / Thursday — Cardio HIIT + Core ─────────────────────────────
-    "cardio_hiit": {
+    # ── Monday — Cardio HIIT + Core (variant A) ────────────────────────────
+    "cardio_hiit_a": {
         "beginner": WorkoutPlan(
             day_type="Кардио HIIT + Core",
             exercises=[
@@ -59,8 +59,8 @@ WORKOUT_LIBRARY: dict[str, dict[str, WorkoutPlan]] = {
             difficulty="advanced",
         ),
     },
-    # ── Tuesday / Friday — Силова тренировка ──────────────────────────────
-    "strength": {
+    # ── Tuesday — Силова тренировка (variant A) ────────────────────────────
+    "strength_a": {
         "beginner": WorkoutPlan(
             day_type="Сила — Ластици + Тяло",
             exercises=[
@@ -108,8 +108,8 @@ WORKOUT_LIBRARY: dict[str, dict[str, WorkoutPlan]] = {
             difficulty="advanced",
         ),
     },
-    # ── Wednesday / Saturday — Лека активност ─────────────────────────────
-    "active_recovery": {
+    # ── Wednesday — Лека активност (variant A) ─────────────────────────────
+    "recovery_a": {
         "beginner": WorkoutPlan(
             day_type="Лека активност + Мобилност",
             exercises=[
@@ -156,16 +156,165 @@ WORKOUT_LIBRARY: dict[str, dict[str, WorkoutPlan]] = {
             difficulty="advanced",
         ),
     },
+    # ── Thursday — Cardio HIIT + Core (variant B) ──────────────────────────
+    "cardio_hiit_b": {
+        "beginner": WorkoutPlan(
+            day_type="Кардио HIIT + Core",
+            exercises=[
+                Exercise(name="Skater Hops", duration="30 сек", rest="15 сек", xp=XP_EASY, youtube_query="skater hops"),
+                Exercise(name="Squat to Knee Drive", sets=3, reps="10", rest="30 сек", xp=XP_MEDIUM, youtube_query="squat knee drive"),
+                Exercise(name="Mountain Climbers", duration="30 сек", rest="20 сек", xp=XP_MEDIUM, youtube_query="mountain climbers"),
+                Exercise(name="Jump Rope", duration="45 сек", rest="20 сек", xp=XP_MEDIUM, youtube_query="jump rope"),
+                Exercise(name="Side Plank", duration="20 сек на страна", rest="20 сек", xp=XP_MEDIUM, youtube_query="side plank"),
+                Exercise(name="Bicycle Crunch", sets=3, reps="12", rest="25 сек", xp=XP_EASY, youtube_query="bicycle crunch"),
+                Exercise(name="Flutter Kicks", sets=3, reps="20", rest="25 сек", xp=XP_EASY, youtube_query="flutter kicks"),
+            ],
+            estimated_duration="25 мин",
+            estimated_calories=230,
+            difficulty="beginner",
+        ),
+        "intermediate": WorkoutPlan(
+            day_type="Кардио HIIT + Core",
+            exercises=[
+                Exercise(name="Skater Hops", duration="45 сек", rest="10 сек", xp=XP_MEDIUM, youtube_query="skater hops"),
+                Exercise(name="Squat to Knee Drive", sets=4, reps="14", rest="20 сек", xp=XP_MEDIUM, youtube_query="squat knee drive"),
+                Exercise(name="Tuck Jumps", sets=3, reps="10", rest="30 сек", xp=XP_HARD, youtube_query="tuck jumps"),
+                Exercise(name="Jump Rope", duration="75 сек", rest="15 сек", xp=XP_MEDIUM, youtube_query="jump rope"),
+                Exercise(name="Mountain Climbers", duration="45 сек", rest="15 сек", xp=XP_MEDIUM, youtube_query="mountain climbers"),
+                Exercise(name="Side Plank", duration="40 сек на страна", rest="15 сек", xp=XP_MEDIUM, youtube_query="side plank"),
+                Exercise(name="Bicycle Crunch", sets=4, reps="20", rest="20 сек", xp=XP_MEDIUM, youtube_query="bicycle crunch"),
+                Exercise(name="V-Up", sets=3, reps="12", rest="25 сек", xp=XP_MEDIUM, youtube_query="v-up exercise"),
+                Exercise(name="Flutter Kicks", sets=3, reps="30", rest="20 сек", xp=XP_EASY, youtube_query="flutter kicks"),
+            ],
+            estimated_duration="35 мин",
+            estimated_calories=350,
+            difficulty="intermediate",
+        ),
+        "advanced": WorkoutPlan(
+            day_type="Кардио HIIT + Core",
+            exercises=[
+                Exercise(name="Tuck Jumps", sets=4, reps="15", rest="20 сек", xp=XP_HARD, youtube_query="tuck jumps"),
+                Exercise(name="Skater Hops", duration="60 сек", rest="10 сек", xp=XP_MEDIUM, youtube_query="skater hops"),
+                Exercise(name="Burpee Broad Jump", sets=4, reps="8", rest="25 сек", xp=XP_HARD, youtube_query="burpee broad jump"),
+                Exercise(name="Jump Rope Double Unders", duration="60 сек", rest="20 сек", xp=XP_HARD, youtube_query="double unders jump rope"),
+                Exercise(name="Mountain Climbers", duration="60 сек", rest="10 сек", xp=XP_MEDIUM, youtube_query="mountain climbers"),
+                Exercise(name="Side Plank with Reach", duration="45 сек на страна", rest="15 сек", xp=XP_HARD, youtube_query="side plank reach"),
+                Exercise(name="V-Up", sets=4, reps="18", rest="20 сек", xp=XP_MEDIUM, youtube_query="v-up exercise"),
+                Exercise(name="Bicycle Crunch", sets=4, reps="30", rest="15 сек", xp=XP_MEDIUM, youtube_query="bicycle crunch"),
+                Exercise(name="Hollow Body Hold", duration="40 сек", rest="20 сек", xp=XP_HARD, youtube_query="hollow body hold"),
+            ],
+            estimated_duration="45 мин",
+            estimated_calories=470,
+            difficulty="advanced",
+        ),
+    },
+    # ── Friday — Силова тренировка (variant B) ─────────────────────────────
+    "strength_b": {
+        "beginner": WorkoutPlan(
+            day_type="Сила — Ластици + Тяло",
+            exercises=[
+                Exercise(name="Sumo Squat", sets=3, reps="12", rest="40 сек", xp=XP_EASY, youtube_query="sumo squat"),
+                Exercise(name="Incline Push Up", sets=3, reps="10", rest="40 сек", xp=XP_MEDIUM, youtube_query="incline push up"),
+                Exercise(name="Resistance Band Pull Apart", sets=3, reps="12", rest="30 сек", xp=XP_EASY, youtube_query="band pull apart"),
+                Exercise(name="Step-Up", sets=3, reps="10 на крак", rest="40 сек", xp=XP_MEDIUM, youtube_query="step up exercise"),
+                Exercise(name="Resistance Band Lateral Raise", sets=3, reps="12", rest="30 сек", xp=XP_EASY, youtube_query="band lateral raise"),
+                Exercise(name="Superman", sets=3, reps="12", rest="30 сек", xp=XP_EASY, youtube_query="superman exercise"),
+            ],
+            estimated_duration="30 мин",
+            estimated_calories=200,
+            difficulty="beginner",
+        ),
+        "intermediate": WorkoutPlan(
+            day_type="Сила — Ластици + Тяло",
+            exercises=[
+                Exercise(name="Sumo Squat", sets=4, reps="15", rest="35 сек", xp=XP_MEDIUM, youtube_query="sumo squat"),
+                Exercise(name="Decline Push Up", sets=4, reps="12", rest="40 сек", xp=XP_MEDIUM, youtube_query="decline push up"),
+                Exercise(name="Resistance Band Face Pull", sets=4, reps="15", rest="30 сек", xp=XP_MEDIUM, youtube_query="band face pull"),
+                Exercise(name="Step-Up", sets=4, reps="12 на крак", rest="35 сек", xp=XP_MEDIUM, youtube_query="step up exercise"),
+                Exercise(name="Resistance Band Lateral Raise", sets=3, reps="15", rest="30 сек", xp=XP_EASY, youtube_query="band lateral raise"),
+                Exercise(name="Single Leg Glute Bridge", sets=3, reps="12 на крак", rest="30 сек", xp=XP_MEDIUM, youtube_query="single leg glute bridge"),
+                Exercise(name="Resistance Band Deadlift", sets=4, reps="15", rest="35 сек", xp=XP_MEDIUM, youtube_query="band deadlift"),
+                Exercise(name="Superman", sets=3, reps="15", rest="25 сек", xp=XP_EASY, youtube_query="superman exercise"),
+            ],
+            estimated_duration="40 мин",
+            estimated_calories=300,
+            difficulty="intermediate",
+        ),
+        "advanced": WorkoutPlan(
+            day_type="Сила — Ластици + Тяло",
+            exercises=[
+                Exercise(name="Pistol Squat (assisted)", sets=4, reps="6 на крак", rest="45 сек", xp=XP_HARD, youtube_query="assisted pistol squat"),
+                Exercise(name="Decline Push Up", sets=4, reps="15", rest="35 сек", xp=XP_MEDIUM, youtube_query="decline push up"),
+                Exercise(name="Resistance Band Face Pull", sets=4, reps="18", rest="25 сек", xp=XP_MEDIUM, youtube_query="band face pull"),
+                Exercise(name="Bulgarian Split Squat", sets=4, reps="10 на крак", rest="40 сек", xp=XP_HARD, youtube_query="bulgarian split squat"),
+                Exercise(name="Resistance Band Deadlift", sets=4, reps="18", rest="30 сек", xp=XP_MEDIUM, youtube_query="band deadlift"),
+                Exercise(name="Single Leg Glute Bridge", sets=4, reps="15 на крак", rest="25 сек", xp=XP_MEDIUM, youtube_query="single leg glute bridge"),
+                Exercise(name="Diamond Push Up", sets=3, reps="12", rest="35 сек", xp=XP_HARD, youtube_query="diamond push up"),
+                Exercise(name="Superman Hold", duration="40 сек", rest="20 сек", xp=XP_MEDIUM, youtube_query="superman hold"),
+            ],
+            estimated_duration="50 мин",
+            estimated_calories=380,
+            difficulty="advanced",
+        ),
+    },
+    # ── Saturday — Лека активност (variant B) ──────────────────────────────
+    "recovery_b": {
+        "beginner": WorkoutPlan(
+            day_type="Лека активност + Мобилност",
+            exercises=[
+                Exercise(name="Jump Rope", duration="3 мин", rest="60 сек", xp=XP_EASY, youtube_query="jump rope"),
+                Exercise(name="Standing Forward Fold", duration="45 сек", rest="—", xp=XP_EASY, youtube_query="standing forward fold stretch"),
+                Exercise(name="Shoulder Rolls", sets=2, reps="12 на посока", rest="—", xp=XP_EASY, youtube_query="shoulder rolls mobility"),
+                Exercise(name="Deep Squat Hold", duration="45 сек", rest="20 сек", xp=XP_EASY, youtube_query="deep squat hold"),
+                Exercise(name="Cobra Stretch", duration="45 сек", rest="—", xp=XP_EASY, youtube_query="cobra stretch"),
+                Exercise(name="Neck Stretch", sets=2, reps="20 сек на страна", rest="—", xp=XP_EASY, youtube_query="neck stretch"),
+            ],
+            estimated_duration="20 мин",
+            estimated_calories=120,
+            difficulty="beginner",
+        ),
+        "intermediate": WorkoutPlan(
+            day_type="Лека активност + Мобилност",
+            exercises=[
+                Exercise(name="Jump Rope", duration="5 мин", rest="60 сек", xp=XP_EASY, youtube_query="jump rope"),
+                Exercise(name="Deep Squat Hold", duration="60 сек", rest="20 сек", xp=XP_EASY, youtube_query="deep squat hold"),
+                Exercise(name="Standing Forward Fold", duration="60 сек", rest="—", xp=XP_EASY, youtube_query="standing forward fold stretch"),
+                Exercise(name="Thread the Needle", sets=3, reps="8 на страна", rest="15 сек", xp=XP_EASY, youtube_query="thread the needle stretch"),
+                Exercise(name="Cobra to Down Dog", sets=3, reps="8", rest="20 сек", xp=XP_EASY, youtube_query="cobra to downward dog"),
+                Exercise(name="90/90 Hip Switch", sets=3, reps="8 на страна", rest="15 сек", xp=XP_MEDIUM, youtube_query="90 90 hip switch"),
+                Exercise(name="Foam Rolling (Гръб)", duration="3 мин", rest="—", xp=XP_EASY, youtube_query="foam rolling back"),
+            ],
+            estimated_duration="25 мин",
+            estimated_calories=150,
+            difficulty="intermediate",
+        ),
+        "advanced": WorkoutPlan(
+            day_type="Лека активност + Мобилност",
+            exercises=[
+                Exercise(name="Jump Rope", duration="8 мин", rest="45 сек", xp=XP_MEDIUM, youtube_query="jump rope"),
+                Exercise(name="Deep Squat Hold", duration="90 сек", rest="20 сек", xp=XP_EASY, youtube_query="deep squat hold"),
+                Exercise(name="90/90 Hip Switch", sets=3, reps="12 на страна", rest="10 сек", xp=XP_MEDIUM, youtube_query="90 90 hip switch"),
+                Exercise(name="Thread the Needle", sets=3, reps="10 на страна", rest="10 сек", xp=XP_EASY, youtube_query="thread the needle stretch"),
+                Exercise(name="Cobra to Down Dog", sets=3, reps="12", rest="15 сек", xp=XP_EASY, youtube_query="cobra to downward dog"),
+                Exercise(name="Jefferson Curl (леко)", sets=3, reps="8", rest="25 сек", xp=XP_MEDIUM, youtube_query="jefferson curl"),
+                Exercise(name="Foam Rolling Full Body", duration="5 мин", rest="—", xp=XP_EASY, youtube_query="foam rolling"),
+                Exercise(name="Wrist Mobility", sets=2, reps="10 на посока", rest="—", xp=XP_EASY, youtube_query="wrist mobility"),
+            ],
+            estimated_duration="30 мин",
+            estimated_calories=180,
+            difficulty="advanced",
+        ),
+    },
 }
 
 DAY_TO_WORKOUT = {
-    0: "cardio_hiit",   # Monday
-    1: "strength",      # Tuesday
-    2: "active_recovery",  # Wednesday
-    3: "cardio_hiit",   # Thursday
-    4: "strength",      # Friday
-    5: "active_recovery",  # Saturday
-    6: None,            # Sunday — rest
+    0: "cardio_hiit_a",  # Monday
+    1: "strength_a",     # Tuesday
+    2: "recovery_a",     # Wednesday
+    3: "cardio_hiit_b",  # Thursday
+    4: "strength_b",     # Friday
+    5: "recovery_b",     # Saturday
+    6: None,             # Sunday — rest
 }
 
 

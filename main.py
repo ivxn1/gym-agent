@@ -1,11 +1,12 @@
 import os
 import logging
 import sentry_sdk
+from sentry_sdk.integrations.logging import LoggingIntegration
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import JSONResponse
 
-from scheduler import create_scheduler
+from scheduler import create_scheduler, catch_up_on_startup
 import database as db
 import telegram_client as tg
 import agent as ai
@@ -18,9 +19,24 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # ── Sentry ─────────────────────────────────────────────────────────────────
+# DSN comes from the SENTRY_DSN fly secret. Fly injects FLY_* env vars
+# automatically, which we use to tag environment and release.
 sentry_dsn = os.environ.get("SENTRY_DSN")
 if sentry_dsn:
-    sentry_sdk.init(dsn=sentry_dsn, traces_sample_rate=0.1)
+    sentry_sdk.init(
+        dsn=sentry_dsn,
+        environment=os.environ.get("SENTRY_ENVIRONMENT", os.environ.get("FLY_APP_NAME", "production")),
+        release=os.environ.get("FLY_MACHINE_VERSION") or os.environ.get("FLY_IMAGE_REF"),
+        traces_sample_rate=float(os.environ.get("SENTRY_TRACES_SAMPLE_RATE", "0.1")),
+        profiles_sample_rate=float(os.environ.get("SENTRY_PROFILES_SAMPLE_RATE", "0.1")),
+        send_default_pii=False,
+        # Capture logger.error()/logger.exception() as Sentry events,
+        # and INFO+ as breadcrumbs for context leading up to an error.
+        integrations=[LoggingIntegration(level=logging.INFO, event_level=logging.ERROR)],
+    )
+    logger.info("Sentry initialised (env=%s)", os.environ.get("FLY_APP_NAME", "production"))
+else:
+    logger.warning("SENTRY_DSN not set — error tracking disabled")
 
 # ── Telegram secret token for webhook security ─────────────────────────────
 WEBHOOK_SECRET = os.environ.get("TELEGRAM_WEBHOOK_SECRET", "")
@@ -36,10 +52,20 @@ async def lifespan(app: FastAPI):
         result = await tg.set_webhook(webhook_url)
         logger.info("Webhook set: %s", result)
 
+    # Register slash commands in Telegram UI
+    cmd_result = await tg.set_bot_commands()
+    logger.info("Bot commands set: %s", cmd_result)
+
     # Start scheduler
     scheduler = create_scheduler()
     scheduler.start()
-    logger.info("Scheduler started")
+    logger.info("Scheduler started with jobs: %s", [j.id for j in scheduler.get_jobs()])
+
+    # Send today's workout if we started up after 08:00 and missed the cron
+    try:
+        await catch_up_on_startup()
+    except Exception as e:
+        logger.error("Startup catch-up failed: %s", e)
 
     yield
 
@@ -53,7 +79,13 @@ app = FastAPI(title="Gym Agent", lifespan=lifespan)
 # ── Health check ───────────────────────────────────────────────────────────
 @app.get("/health")
 async def health():
-    return {"status": "ok"}
+    return {"status": "ok", "sentry": bool(sentry_dsn)}
+
+
+# ── Sentry verification — triggers a test error, then check your dashboard ──
+@app.get("/debug/sentry")
+async def debug_sentry():
+    raise RuntimeError("Sentry test error — integration is working")
 
 
 # ── Telegram webhook ───────────────────────────────────────────────────────
@@ -72,10 +104,9 @@ async def webhook(request: Request):
 
     try:
         await handle_update(update)
-    except Exception as e:
-        logger.exception("Unhandled error in webhook: %s", e)
-        if sentry_dsn:
-            sentry_sdk.capture_exception(e)
+    except Exception:
+        # LoggingIntegration forwards this to Sentry as an event.
+        logger.exception("Unhandled error in webhook")
 
     # Always return 200 to Telegram
     return JSONResponse({"ok": True})
@@ -101,6 +132,8 @@ async def handle_update(update: dict):
     if not telegram_id or not text:
         return
 
+    lower = text.lower().strip(" ?!.")
+
     # ── /start ─────────────────────────────────────────────────────────────
     if text == "/start":
         db.upsert_user(telegram_id, first_name)
@@ -113,13 +146,13 @@ async def handle_update(update: dict):
             "Вт/Пет — Сила с ластици\n"
             "Ср/Съб — Лека активност\n"
             "Нед — Почивка\n\n"
-            "Команди: /workout /menu /stats\n"
-            "Или ми пиши свободно на български.",
+            "Използвай бутоните долу или ми пиши свободно на български.",
+            reply_markup=tg.PERSISTENT_KEYBOARD,
         )
         return
 
-    # ── /stats ─────────────────────────────────────────────────────────────
-    if text == "/stats":
+    # ── /stats or "Статистика" button ──────────────────────────────────────
+    if text == "/stats" or lower == "статистика":
         user = db.get_user(telegram_id)
         if user:
             await tg.send_message(
@@ -132,13 +165,17 @@ async def handle_update(update: dict):
             )
         return
 
-    # ── /workout ───────────────────────────────────────────────────────────
-    if text == "/workout":
+    # ── /workout or "Днешна тренировка" button ─────────────────────────────
+    if text == "/workout" or lower in {"днешна тренировка", "тренировка"}:
         await tg.send_daily_workout(telegram_id)
         return
 
-    # ── /menu ──────────────────────────────────────────────────────────────
-    if text == "/menu":
+    # ── /menu, "Меню" button, or menu-like requests ───────────────────────
+    menu_triggers = {
+        "/menu", "меню", "menu", "опции", "options", "какво можеш", "помощ",
+        "help", "/help", "commands", "команди",
+    }
+    if text == "/menu" or lower in menu_triggers:
         await tg.send_workout_menu(chat_id)
         return
 

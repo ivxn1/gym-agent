@@ -26,9 +26,32 @@ Get key from https://console.anthropic.com → `ANTHROPIC_API_KEY`
 
    If skipped, the agent falls back to curated links + YouTube search URLs.
 
-## 5. Sentry (optional)
+## 5. Sentry (error tracking)
 
-Create free project at https://sentry.io → copy DSN → `SENTRY_DSN`
+1. Create a free account at https://sentry.io
+2. **Create Project** → platform **Python → FastAPI** → copy the **DSN**
+   (looks like `https://<key>@o12345.ingest.de.sentry.io/678`)
+3. Set it as a fly secret (this triggers a redeploy automatically):
+   ```bash
+   fly secrets set SENTRY_DSN="https://<key>@o12345.ingest.de.sentry.io/678"
+   ```
+4. After deploy, verify it works:
+   ```bash
+   curl https://gym-agent.fly.dev/health
+   # → {"status":"ok","sentry":true}
+
+   curl https://gym-agent.fly.dev/debug/sentry
+   # triggers a test error — within ~30s a "Sentry test error"
+   # issue appears in your Sentry dashboard
+   ```
+
+The app tags each event with the Fly app name (`environment`) and machine
+version (`release`), and forwards every `logger.error`/`logger.exception`
+(including scheduler and Telegram failures) to Sentry automatically.
+
+Optional tuning secrets:
+- `SENTRY_ENVIRONMENT` — override the environment tag (default: Fly app name)
+- `SENTRY_TRACES_SAMPLE_RATE` / `SENTRY_PROFILES_SAMPLE_RATE` — default `0.1`
 
 ## 6. Fly.io Deploy
 

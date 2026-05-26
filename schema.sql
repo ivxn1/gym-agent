@@ -74,6 +74,39 @@ create table if not exists weekly_stats (
 
 create index if not exists weekly_stats_user_week_idx on weekly_stats (user_id, week_start);
 
+-- ── User Preferences ──────────────────────────────────────────────────────
+create table if not exists user_preferences (
+  id              bigserial primary key,
+  user_id         bigint unique not null references users(id) on delete cascade,
+  equipment       jsonb not null default '["treadmill","jump_rope","resistance_band","bodyweight"]',
+  goals           jsonb not null default '["weight_loss","muscle","endurance"]',
+  target_muscles  jsonb not null default '[]',
+  exclusions      jsonb not null default '[]',
+  session_minutes int not null default 35,
+  created_at      timestamptz not null default now(),
+  updated_at      timestamptz not null default now()
+);
+
+create trigger user_preferences_updated_at
+  before update on user_preferences
+  for each row execute procedure update_updated_at();
+
+-- ── Daily Workouts (AI-generated plan cache) ───────────────────────────────
+-- One row per generated plan. Not unique on (user_id, plan_date) because
+-- quick workouts and regenerate each add a new row.
+-- Consider a cleanup job to delete rows older than 30 days.
+create table if not exists daily_workouts (
+  id          bigserial primary key,
+  user_id     bigint not null references users(id) on delete cascade,
+  plan_date   date not null default current_date,
+  category    text not null,
+  source      text not null default 'ai' check (source in ('ai', 'fallback', 'quick')),
+  plan        jsonb not null,
+  created_at  timestamptz not null default now()
+);
+
+create index if not exists daily_workouts_user_date_idx on daily_workouts (user_id, plan_date);
+
 -- ── Row Level Security (RLS) ───────────────────────────────────────────────
 -- The app connects with the service role key (bypasses RLS),
 -- but enable RLS to prevent accidental public reads.
@@ -82,6 +115,8 @@ alter table users enable row level security;
 alter table workout_logs enable row level security;
 alter table user_state enable row level security;
 alter table weekly_stats enable row level security;
+alter table user_preferences enable row level security;
+alter table daily_workouts enable row level security;
 
 -- Service role already bypasses RLS — no policies needed for the backend.
 -- Add anon-read policies only if you expose a public dashboard later.

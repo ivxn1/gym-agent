@@ -179,6 +179,14 @@ async def handle_update(update: dict):
         await tg.send_workout_menu(chat_id)
         return
 
+    # ── /preferences or "Настройки" button ────────────────────────────────
+    pref_triggers = {
+        "/preferences", "настройки", "предпочитания", "preferences", "prefs",
+    }
+    if text == "/preferences" or lower in pref_triggers:
+        await tg.send_preferences_menu(telegram_id)
+        return
+
     # ── Free-text chat → Claude agent ─────────────────────────────────────
     reply = await ai.chat(telegram_id, text)
     await tg.send_message(chat_id, reply)

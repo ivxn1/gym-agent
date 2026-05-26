@@ -195,3 +195,72 @@ def get_weekly_stats(user_id: int, week_start: date) -> Optional[dict]:
 def get_all_active_users() -> list:
     res = get_client().table("users").select("*").execute()
     return res.data or []
+
+
+# ── User Preferences ───────────────────────────────────────────────────────
+
+def get_user_preferences(user_id: int) -> dict:
+    try:
+        res = get_client().table("user_preferences").select("*").eq("user_id", user_id).single().execute()
+        return res.data
+    except Exception:
+        data = {
+            "user_id": user_id,
+            "equipment": ["treadmill", "jump_rope", "resistance_band", "bodyweight"],
+            "goals": ["weight_loss", "muscle", "endurance"],
+            "target_muscles": [],
+            "exclusions": [],
+            "session_minutes": 35,
+        }
+        try:
+            get_client().table("user_preferences").insert(data).execute()
+        except Exception:
+            pass
+        return data
+
+
+def patch_user_preferences(user_id: int, **fields) -> dict:
+    get_user_preferences(user_id)  # ensure row exists
+    res = get_client().table("user_preferences").update(fields).eq("user_id", user_id).execute()
+    return res.data[0] if res.data else {}
+
+
+# ── Daily Workouts ─────────────────────────────────────────────────────────
+
+def save_generated_plan(user_id: int, category: str, source: str, plan: dict) -> int:
+    res = get_client().table("daily_workouts").insert({
+        "user_id": user_id,
+        "category": category,
+        "source": source,
+        "plan": plan,
+    }).execute()
+    return res.data[0]["id"]
+
+
+def get_plan_by_id(plan_id: int, user_id: int) -> Optional[dict]:
+    try:
+        res = get_client().table("daily_workouts") \
+            .select("*") \
+            .eq("id", plan_id) \
+            .eq("user_id", user_id) \
+            .single().execute()
+        return res.data
+    except Exception:
+        return None
+
+
+def get_today_plan(user_id: int, category: str = None) -> Optional[dict]:
+    """Return newest scheduled (non-quick) plan for today, optionally filtered by category."""
+    try:
+        q = (get_client().table("daily_workouts")
+             .select("*")
+             .eq("user_id", user_id)
+             .eq("plan_date", str(date.today())))
+        if category:
+            q = q.eq("category", category)
+        else:
+            q = q.in_("category", ["hiit_core", "strength", "recovery"])
+        res = q.order("created_at", desc=True).limit(1).execute()
+        return res.data[0] if res.data else None
+    except Exception:
+        return None

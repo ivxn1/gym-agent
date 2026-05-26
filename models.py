@@ -2,6 +2,14 @@ from pydantic import BaseModel
 from typing import Optional
 from datetime import date, datetime
 
+# Controlled vocabulary shared by preferences menu, generator prompt, and agent tools
+EQUIPMENT_OPTIONS = [
+    "treadmill", "jump_rope", "resistance_band", "bodyweight",
+    "dumbbells", "barbell", "kettlebell", "pull_up_bar", "mat",
+]
+GOAL_OPTIONS = ["weight_loss", "muscle", "endurance", "flexibility", "general_fitness"]
+MUSCLE_OPTIONS = ["chest", "back", "shoulders", "arms", "legs", "glutes", "core", "full_body"]
+
 
 class User(BaseModel):
     telegram_id: int
@@ -54,6 +62,15 @@ class WorkoutPlan(BaseModel):
     estimated_duration: str
     estimated_calories: int
     difficulty: str
+
+
+class UserPreferences(BaseModel):
+    user_id: int
+    equipment: list = ["treadmill", "jump_rope", "resistance_band", "bodyweight"]
+    goals: list = ["weight_loss", "muscle", "endurance"]
+    target_muscles: list = []
+    exclusions: list = []
+    session_minutes: int = 35
 
 
 class TelegramUpdate(BaseModel):

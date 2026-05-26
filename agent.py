@@ -7,6 +7,7 @@ import anthropic
 import database as db
 from workouts import get_workout_plan
 from youtube import search_youtube
+from models import EQUIPMENT_OPTIONS, GOAL_OPTIONS, MUSCLE_OPTIONS
 
 logger = logging.getLogger(__name__)
 
@@ -18,14 +19,17 @@ SYSTEM_PROMPT = """Ти си личен фитнес треньор на пот�
 Форматиране: ВИНАГИ използвай Telegram HTML тагове — <b>удебелен</b> и <i>курсив</i>. НИКОГА НЕ използвай markdown синтаксис: ЗАБРАНЕНО е да пишеш **text** или *text* или __text__. Само HTML тагове.
 
 Програма: понеделник/четвъртък — кардио HIIT + core, вторник/петък — сила с ластици и тежест на тялото, сряда/събота — лека активност + мобилност, неделя — почивка.
-Оборудване: пътека за бягане, въже за скачане, ластици.
+Тренировките са персонализирани с AI според настройките на потребителя (оборудване, цели, мускули, изключени упражнения).
 
 Правила:
 - Когато питат за тренировка за конкретен ден — ЗАДЪЛЖИТЕЛНО използвай инструмента get_workout_plan и изброй точните упражнения от резултата.
 - Когато казват "беше лесно" или "искам по-тежко" — използвай adapt_difficulty(too_easy).
 - Когато казват "пропуснах" или "не можах" — отговори без осъждане, използвай adapt_difficulty(missed_day).
 - Когато питат как се прави упражнение — обясни с 2-3 ключови точки за техниката, без инструменти.
-- НИКОГА не създавай текстово "меню" с emoji списъци (🏃, 💪, 📊 и т.н.). Менюто е отделна функция с истински бутони — ако потребителят пита какво можеш, просто кажи му да напише /menu или /workout. Не повтаряй списък с команди."""
+- Когато споменат оборудване, цели, мускули или контузии → използвай update_preferences.
+- Когато питат за настройките си → използвай get_preferences.
+- Когато искат нова/друга тренировка за днес → използвай regenerate_workout.
+- НИКОГА не създавай текстово "меню" с emoji списъци. Ако питат какво можеш, кажи им да напишат /menu или /workout."""
 
 TOOLS = [
     {
@@ -87,6 +91,37 @@ TOOLS = [
             },
             "required": ["exercise_name"],
         },
+    },
+    {
+        "name": "get_preferences",
+        "description": "Взима настройките на потребителя — оборудване, цели, мускули, изключени упражнения.",
+        "input_schema": {"type": "object", "properties": {}},
+    },
+    {
+        "name": "update_preferences",
+        "description": (
+            "Обновява предпочитанията на потребителя. "
+            "Използвай когато споменат оборудване, цели, мускули или контузии."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "add_equipment":    {"type": "array", "items": {"type": "string"},
+                                     "description": f"Equipment keys to add: {EQUIPMENT_OPTIONS}"},
+                "remove_equipment": {"type": "array", "items": {"type": "string"}},
+                "set_goals":        {"type": "array", "items": {"type": "string"},
+                                     "description": f"Replace goals list: {GOAL_OPTIONS}"},
+                "add_exclusions":   {"type": "array", "items": {"type": "string"},
+                                     "description": "Injury/movement keywords to exclude"},
+                "remove_exclusions":{"type": "array", "items": {"type": "string"}},
+                "session_minutes":  {"type": "integer", "description": "Session duration 15–120 min"},
+            },
+        },
+    },
+    {
+        "name": "regenerate_workout",
+        "description": "Генерира нова тренировка за днес и я изпраща. Използвай когато потребителят поиска друга тренировка.",
+        "input_schema": {"type": "object", "properties": {}},
     },
 ]
 
@@ -153,6 +188,67 @@ async def execute_tool(tool_name: str, tool_input: dict, context: dict) -> str:
         elif tool_name == "search_youtube":
             url = await search_youtube(tool_input["exercise_name"])
             return json.dumps({"url": url})
+
+        elif tool_name == "get_preferences":
+            user = context["user"]
+            prefs = db.get_user_preferences(user["id"])
+            return json.dumps({
+                "equipment":      prefs.get("equipment", []),
+                "goals":          prefs.get("goals", []),
+                "target_muscles": prefs.get("target_muscles", []),
+                "exclusions":     prefs.get("exclusions", []),
+                "session_minutes":prefs.get("session_minutes", 35),
+            })
+
+        elif tool_name == "update_preferences":
+            user   = context["user"]
+            prefs  = db.get_user_preferences(user["id"])
+            updates: dict = {}
+
+            if "add_equipment" in tool_input:
+                current = list(prefs.get("equipment") or [])
+                for e in tool_input["add_equipment"]:
+                    if e in EQUIPMENT_OPTIONS and e not in current:
+                        current.append(e)
+                updates["equipment"] = current
+
+            if "remove_equipment" in tool_input:
+                current = list(updates.get("equipment", prefs.get("equipment") or []))
+                for e in tool_input["remove_equipment"]:
+                    if e in current:
+                        current.remove(e)
+                updates["equipment"] = current
+
+            if "set_goals" in tool_input:
+                updates["goals"] = [g for g in tool_input["set_goals"] if g in GOAL_OPTIONS]
+
+            if "add_exclusions" in tool_input:
+                current = list(prefs.get("exclusions") or [])
+                for e in tool_input["add_exclusions"]:
+                    if e and e not in current:
+                        current.append(e)
+                updates["exclusions"] = current
+
+            if "remove_exclusions" in tool_input:
+                current = list(updates.get("exclusions", prefs.get("exclusions") or []))
+                for e in tool_input["remove_exclusions"]:
+                    if e in current:
+                        current.remove(e)
+                updates["exclusions"] = current
+
+            if "session_minutes" in tool_input:
+                mins = int(tool_input["session_minutes"])
+                if 15 <= mins <= 120:
+                    updates["session_minutes"] = mins
+
+            if updates:
+                db.patch_user_preferences(user["id"], **updates)
+            return json.dumps({"result": "saved", "updated": list(updates.keys())})
+
+        elif tool_name == "regenerate_workout":
+            import telegram_client as tg
+            await tg.send_regenerated_today(context["telegram_id"])
+            return json.dumps({"result": "Генерирах нова тренировка за днес."})
 
     except Exception as e:
         logger.error("Tool %s error: %s", tool_name, e)
